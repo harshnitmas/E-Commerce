@@ -1,0 +1,45 @@
+# ── .NET ──────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+*.log
+*.tmp
+TestResults/
+
+# EF Core migration snapshots are committed, but exclude the build artifacts
+# (keep Migrations/ folder — do NOT gitignore it)
+
+# ── Node / React UI ───────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+.cache/
+.parcel-cache/
+
+# ── Environment secrets ───────────────────────────────
+.env
+.env.local
+.env.*.local
+# .env.example is safe to commit — it has no real secrets
+
+# ── Logs ──────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+
+# ── OS / IDE ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/settings.json
+
+# ── Docker ────────────────────────────────────────────
+# docker-compose.yml IS committed; ignore override files
+docker-compose.override.yml
+
+# ── Serilog file sink ─────────────────────────────────
+src/OrderProcessing.API/logs/

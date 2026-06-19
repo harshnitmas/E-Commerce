@@ -1,0 +1,40 @@
+using OrderProcessing.Domain.Common;
+
+namespace OrderProcessing.Domain.Errors;
+
+public static class DomainErrors
+{
+    public static class Order
+    {
+        public static readonly DomainError NotFound =
+            DomainError.NotFound("Order.NotFound", "Order was not found.");
+
+        public static readonly DomainError MustHaveItems =
+            DomainError.Validation("Order.MustHaveItems", "An order must contain at least one item.");
+
+        public static readonly DomainError CanOnlyCancelPending =
+            DomainError.BusinessRule("Order.CanOnlyCancelPending", "Only orders in PENDING status can be cancelled.");
+
+        public static readonly DomainError CancellationReasonRequired =
+            DomainError.Validation("Order.CancellationReasonRequired", "A cancellation reason is required.");
+
+        public static DomainError InvalidStatusTransition(string from, string to) =>
+            DomainError.BusinessRule("Order.InvalidStatusTransition",
+                $"Cannot transition order from {from} to {to}.");
+
+        public static readonly DomainError AlreadyCancelled =
+            DomainError.BusinessRule("Order.AlreadyCancelled", "A cancelled order cannot be modified.");
+    }
+
+    public static class OrderItem
+    {
+        public static readonly DomainError ProductNameRequired =
+            DomainError.Validation("OrderItem.ProductNameRequired", "Product name is required.");
+
+        public static readonly DomainError QuantityMustBePositive =
+            DomainError.Validation("OrderItem.QuantityMustBePositive", "Quantity must be at least 1.");
+
+        public static readonly DomainError PriceMustBePositive =
+            DomainError.Validation("OrderItem.PriceMustBePositive", "Unit price must be greater than 0.");
+    }
+}
