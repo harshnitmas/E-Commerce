@@ -18,7 +18,7 @@ const EVENT_LABELS: Record<string, string> = {
 
 export default function OrderAuditPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: events, isLoading } = useOrderAudit(id!)
+  const { data: events, isLoading, isError } = useOrderAudit(id!)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -37,7 +37,14 @@ export default function OrderAuditPage() {
         </div>
       )}
 
-      {!isLoading && (!events || events.length === 0) && (
+      {isError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-semibold text-red-700">Failed to load audit log</p>
+          <p className="mt-1 text-sm text-red-500">The order may not exist or the server is unavailable.</p>
+        </div>
+      )}
+
+      {!isLoading && !isError && (!events || events.length === 0) && (
         <div className="text-center py-16 text-gray-400">No audit events found for this order.</div>
       )}
 

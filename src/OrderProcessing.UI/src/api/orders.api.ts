@@ -29,9 +29,7 @@ export const ordersApi = {
   },
 
   cancel: async (id: string, reason: string): Promise<OrderDto> => {
-    const res = await apiClient.delete<OrderDto>(`/api/v1/orders/${id}`, {
-      data: { reason },
-    })
+    const res = await apiClient.post<OrderDto>(`/api/v1/orders/${id}/cancel`, { reason })
     return res.data
   },
 

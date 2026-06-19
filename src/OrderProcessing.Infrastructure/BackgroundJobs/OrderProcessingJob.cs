@@ -53,12 +53,16 @@ public class OrderProcessingJob(
             DateTimeOffset occurredAt = DateTimeOffset.UtcNow;
             foreach (Guid orderId in orderIds)
             {
-                await eventBus.PublishAsync(new OrderStatusChangedMessage(
-                    orderId,
-                    "Pending",
-                    "Processing",
-                    "BackgroundJob",
-                    occurredAt), ct).ConfigureAwait(false);
+                try
+                {
+                    await eventBus.PublishAsync(new OrderStatusChangedMessage(
+                        orderId, "Pending", "Processing", "BackgroundJob", occurredAt), ct)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to publish OrderStatusChangedMessage for order {OrderId} in batch — skipping", orderId);
+                }
             }
 
             sw.Stop();

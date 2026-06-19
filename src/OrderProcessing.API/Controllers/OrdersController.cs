@@ -2,10 +2,10 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.API.Models;
 using OrderProcessing.Application.DTOs;
-using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Orders.Commands.CancelOrder;
 using OrderProcessing.Application.Orders.Commands.CreateOrder;
 using OrderProcessing.Application.Orders.Commands.UpdateOrderStatus;
+using OrderProcessing.Application.Orders.Queries.GetOrderAudit;
 using OrderProcessing.Application.Orders.Queries.GetOrderById;
 using OrderProcessing.Application.Orders.Queries.ListOrders;
 using OrderProcessing.Domain.Common;
@@ -15,7 +15,7 @@ namespace OrderProcessing.API.Controllers;
 
 [ApiController]
 [Route("api/v1/orders")]
-public class OrdersController(IMediator mediator, IOrderAuditRepository auditRepository) : ControllerBase
+public class OrdersController(IMediator mediator) : ControllerBase
 {
     private string CorrelationId =>
         HttpContext.Items["X-Correlation-Id"]?.ToString() ?? "unknown";
@@ -82,7 +82,7 @@ public class OrdersController(IMediator mediator, IOrderAuditRepository auditRep
             error => ErrorResponse(error));
     }
 
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/cancel")]
     [ProducesResponseType(typeof(ApiResponse<OrderDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> CancelOrder(
@@ -96,10 +96,13 @@ public class OrdersController(IMediator mediator, IOrderAuditRepository auditRep
 
     [HttpGet("{id:guid}/audit")]
     [ProducesResponseType(typeof(ApiResponse<List<AuditEventDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAuditLog(Guid id, CancellationToken ct)
     {
-        var events = await auditRepository.GetByOrderIdAsync(id, ct);
-        return Ok(ApiResponse<List<AuditEventDto>>.Ok(events, CorrelationId));
+        var result = await mediator.Send(new GetOrderAuditQuery(id), ct);
+        return result.Match<IActionResult>(
+            events => Ok(ApiResponse<List<AuditEventDto>>.Ok(events, CorrelationId)),
+            error => ErrorResponse(error));
     }
 
     private IActionResult ErrorResponse(DomainError error) => error.Type switch

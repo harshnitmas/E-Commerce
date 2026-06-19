@@ -1,7 +1,6 @@
 using OrderProcessing.Domain.Common;
 using OrderProcessing.Domain.Enums;
 using OrderProcessing.Domain.Errors;
-using OrderProcessing.Domain.Events;
 
 namespace OrderProcessing.Domain.Entities;
 
@@ -42,7 +41,6 @@ public class Order : AggregateRoot<Guid>
             order._items.Add(item);
 
         order.TotalAmount = order._items.Sum(i => i.Subtotal);
-        order.AddDomainEvent(OrderCreatedEvent.Create(orderId, customerId, order.TotalAmount));
 
         return order;
     }
@@ -58,8 +56,6 @@ public class Order : AggregateRoot<Guid>
         var previous = Status;
         Status = newStatus;
         UpdatedAt = DateTimeOffset.UtcNow;
-
-        AddDomainEvent(OrderStatusChangedEvent.Create(Id, previous, newStatus, triggeredBy));
 
         return this;
     }
@@ -77,9 +73,6 @@ public class Order : AggregateRoot<Guid>
         CancelledAt = DateTimeOffset.UtcNow;
         UpdatedAt = DateTimeOffset.UtcNow;
         CancellationReason = reason.Trim();
-
-        AddDomainEvent(OrderStatusChangedEvent.Create(Id, previous, OrderStatus.Cancelled, triggeredBy));
-        AddDomainEvent(OrderCancelledEvent.Create(Id, CustomerId, reason));
 
         return this;
     }

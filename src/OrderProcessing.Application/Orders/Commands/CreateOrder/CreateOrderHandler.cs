@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Messages;
@@ -9,7 +10,8 @@ namespace OrderProcessing.Application.Orders.Commands.CreateOrder;
 
 public class CreateOrderHandler(
     IOrderRepository orderRepository,
-    IEventBus eventBus)
+    IEventBus eventBus,
+    ILogger<CreateOrderHandler> logger)
     : IRequestHandler<CreateOrderCommand, Result<OrderDto, DomainError>>
 {
     public async Task<Result<OrderDto, DomainError>> Handle(
@@ -30,12 +32,16 @@ public class CreateOrderHandler(
         Order order = orderResult.Value;
         await orderRepository.AddAsync(order, ct).ConfigureAwait(false);
 
-        await eventBus.PublishAsync(new OrderCreatedMessage(
-            order.Id,
-            order.CustomerId,
-            order.TotalAmount,
-            "Customer",
-            order.CreatedAt), ct).ConfigureAwait(false);
+        try
+        {
+            await eventBus.PublishAsync(new OrderCreatedMessage(
+                order.Id, order.CustomerId, order.TotalAmount, "Customer", order.CreatedAt), ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to publish OrderCreatedMessage for order {OrderId} — audit/cache will be stale", order.Id);
+        }
 
         return order.ToDto();
     }

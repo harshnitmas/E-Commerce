@@ -40,7 +40,7 @@ Full-stack order management system built with **.NET 8 Clean Architecture** and 
 ┌──────────────────────▼──────────────────────────────┐
 │          OrderProcessing.Infrastructure              │
 │  PostgreSQL (EF Core 8)  │  MongoDB  │  Redis        │
-│  + Background Job (PeriodicTimer, 5 min)             │
+│  + RabbitMQ (MassTransit) + Background Job (5 min)  │
 └──────────────────────────────────────────────────────┘
          ▲ depends only on Domain interfaces
 ┌────────┴────────────────────────────────────────────┐
@@ -57,6 +57,7 @@ Full-stack order management system built with **.NET 8 Clean Architecture** and 
 | **PostgreSQL 16** | Orders, order items | ACID transactions, relational integrity |
 | **MongoDB 7** | Audit event log | Append-only, schema-flexible, non-fatal writes |
 | **Redis 7** | Order list cache (60s TTL) | Reduce PostgreSQL read load on list queries |
+| **RabbitMQ 3** | Event bus | Decoupled side-effects (audit writes, cache invalidation) via MassTransit consumers |
 
 ---
 
@@ -211,6 +212,7 @@ E-Commerce/
 | EF Core + Npgsql | 8.x | PostgreSQL ORM |
 | MongoDB.Driver | 3.1.0 | Audit log persistence |
 | StackExchange.Redis | 2.8.16 | Order list caching |
+| MassTransit + RabbitMQ | 8.3.6 | Event-driven messaging |
 | Polly | 8.5.2 | Retry policies on DB calls |
 | Serilog | latest | Structured logging (file + console) |
 | Swashbuckle | 6.x | Swagger / OpenAPI |
@@ -239,12 +241,23 @@ E-Commerce/
 ### Order Management
 | Feature | Details |
 |---------|---------|
-| **Create Order** | POST with multiple line items; calculates totals; raises `OrderCreatedEvent` |
+| **Create Order** | POST with multiple line items; calculates totals; publishes `OrderCreatedMessage` to RabbitMQ |
 | **Get Order** | Fetch by GUID; 404 via Result pattern (no exceptions) |
-| **List Orders** | Paginated (page + pageSize); filterable by status; Redis-cached for 60s |
+| **List Orders** | Paginated (page 1+, pageSize 1–50); filterable by status; Redis-cached for 60s |
 | **Update Status** | PATCH with target status; enforces valid transitions only |
-| **Cancel Order** | Only allowed on `Pending` orders; captures cancel reason; raises `OrderCancelledEvent` |
-| **Order Audit Log** | GET `/orders/{id}/audit` — full MongoDB event timeline |
+| **Cancel Order** | POST `/orders/{id}/cancel`; only allowed on `Pending` orders; captures cancel reason |
+| **Order Audit Log** | GET `/orders/{id}/audit` — returns 404 for unknown orders; timeline sourced from MongoDB |
+
+### Event-Driven Architecture (RabbitMQ + MassTransit)
+Every mutating operation publishes a message to RabbitMQ. Three consumers handle side-effects asynchronously and independently of the HTTP response:
+
+| Message | Consumer | Side-effect |
+|---------|----------|-------------|
+| `OrderCreatedMessage` | `OrderCreatedConsumer` | Append audit event to MongoDB |
+| `OrderStatusChangedMessage` | `OrderStatusChangedConsumer` | Append audit event + invalidate Redis list cache |
+| `OrderCancelledMessage` | `OrderCancelledConsumer` | Append audit event + invalidate Redis list cache |
+
+Broker unavailability is **non-fatal** — a warning is logged and the HTTP response still succeeds. The `IEventBus` interface lives in the Application layer; only Infrastructure references MassTransit, preserving Clean Architecture boundaries.
 
 ### Status State Machine
 ```
@@ -257,13 +270,15 @@ Invalid transitions are rejected with `422 Unprocessable Entity`.
 ### Background Job
 - Runs every **5 minutes** via `PeriodicTimer` (hosted service)
 - Auto-transitions all `Pending` orders older than 5 minutes → `Processing`
-- Batch update via `ExecuteUpdateAsync` (single SQL round-trip)
-- Writes MongoDB audit event per transitioned order
-- Invalidates Redis list cache after batch
+- Batch update via `ExecuteUpdateAsync` (single SQL round-trip, bypasses EF concurrency token by design)
+- Publishes `OrderStatusChangedMessage` per order to RabbitMQ (each publish independently non-fatal)
+- Consumers write MongoDB audit + invalidate Redis asynchronously
 
 ### Resilience & Observability
 - **Polly**: 3 retries with exponential backoff on PostgreSQL transient errors
 - **MongoDB/Redis**: non-fatal — failures logged as Warning, system continues
+- **RabbitMQ**: non-fatal — broker unavailability logs a warning; HTTP response is unaffected
+- **Concurrency conflicts**: `DbUpdateConcurrencyException` on `SaveChangesAsync` returns `409 Conflict`
 - **Serilog**: structured logs with `OrderId`, `CustomerId`, `CorrelationId` enrichment
 - **Health checks**: `/health` endpoint (PostgreSQL + Redis + MongoDB)
 - **Correlation ID**: every HTTP request gets `X-Correlation-Id` tracked end-to-end
@@ -280,8 +295,8 @@ Base URL: `http://localhost:5000/api/v1`
 | `GET` | `/orders/{id}` | Get order by ID |
 | `GET` | `/orders` | List orders (paginated, filterable) |
 | `PATCH` | `/orders/{id}/status` | Update order status |
-| `DELETE` | `/orders/{id}` | Cancel order (Pending only) |
-| `GET` | `/orders/{id}/audit` | Fetch audit log from MongoDB |
+| `POST` | `/orders/{id}/cancel` | Cancel order (Pending only) |
+| `GET` | `/orders/{id}/audit` | Fetch audit log from MongoDB (404 if order not found) |
 | `GET` | `/health` | Infrastructure health check |
 | `GET` | `/swagger` | Interactive API documentation (dev only) |
 
@@ -346,7 +361,7 @@ PATCH /api/v1/orders/{id}/status
 ### Step 1 — Start Infrastructure
 ```bash
 docker-compose up -d
-# Starts PostgreSQL:5432, MongoDB:27017, Redis:6379
+# Starts PostgreSQL:5432, MongoDB:27017, Redis:6379, RabbitMQ:5672 (management UI: http://localhost:15672)
 ```
 
 ### Step 2 — Run Database Migrations
@@ -474,5 +489,8 @@ Order lists are read-heavy. The 60-second TTL with write-through invalidation re
 ### Why `PeriodicTimer` for the background job?
 `PeriodicTimer` (introduced in .NET 6) avoids timer drift and integrates cleanly with `CancellationToken` for graceful shutdown — unlike `Task.Delay` loops or `System.Threading.Timer`.
 
-### Why MassTransit abstraction (planned)?
-Direct Kafka client code couples the application to a specific broker. MassTransit lets tests use an in-memory bus, staging use RabbitMQ, and production use Kafka — without changing application code.
+### Why MassTransit + RabbitMQ for event-driven side-effects?
+Direct side-effect coupling (writing audit + invalidating cache inside HTTP handlers) creates hidden failure modes. With MassTransit, each consumer is independently retriable, observable, and can be scaled separately. The `IEventBus` abstraction keeps Application layer clean — swapping RabbitMQ for Kafka in production requires only an Infrastructure change.
+
+### Why version-based Redis cache invalidation instead of SCAN?
+`server.Keys(pattern)` performs a blocking O(N) SCAN across all Redis keys, holding a thread-pool thread. Instead, `InvalidateListAsync` increments an atomic version counter (`orders:cache:v`). List cache keys include the version in their name, so incrementing the counter instantly makes all prior entries unreachable. Old keys expire naturally via their 60s TTL.

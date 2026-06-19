@@ -55,6 +55,8 @@ public class OrderRepository(AppDbContext dbContext) : IOrderRepository
     public async Task BatchUpdateStatusAsync(
         List<Guid> orderIds, OrderStatus newStatus, CancellationToken ct = default)
     {
+        // ExecuteUpdateAsync bypasses the EF change tracker and the UpdatedAt concurrency token.
+        // This is intentional for bulk operations — individual row-level conflicts are not checked.
         await dbContext.Orders
             .Where(o => orderIds.Contains(o.Id))
             .ExecuteUpdateAsync(s => s

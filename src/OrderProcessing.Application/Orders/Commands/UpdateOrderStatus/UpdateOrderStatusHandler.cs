@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Messages;
@@ -9,7 +10,8 @@ namespace OrderProcessing.Application.Orders.Commands.UpdateOrderStatus;
 
 public class UpdateOrderStatusHandler(
     IOrderRepository orderRepository,
-    IEventBus eventBus)
+    IEventBus eventBus,
+    ILogger<UpdateOrderStatusHandler> logger)
     : IRequestHandler<UpdateOrderStatusCommand, Result<OrderDto, DomainError>>
 {
     public async Task<Result<OrderDto, DomainError>> Handle(
@@ -24,12 +26,17 @@ public class UpdateOrderStatusHandler(
 
         await orderRepository.UpdateAsync(order, ct).ConfigureAwait(false);
 
-        await eventBus.PublishAsync(new OrderStatusChangedMessage(
-            order.Id,
-            previousStatus,
-            order.Status.ToString(),
-            command.TriggeredBy,
-            order.UpdatedAt), ct).ConfigureAwait(false);
+        try
+        {
+            await eventBus.PublishAsync(new OrderStatusChangedMessage(
+                order.Id, previousStatus, order.Status.ToString(),
+                command.TriggeredBy, order.UpdatedAt), ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to publish OrderStatusChangedMessage for order {OrderId} — audit/cache will be stale", order.Id);
+        }
 
         return order.ToDto();
     }

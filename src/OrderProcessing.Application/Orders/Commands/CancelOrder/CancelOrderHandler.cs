@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Messages;
@@ -9,7 +10,8 @@ namespace OrderProcessing.Application.Orders.Commands.CancelOrder;
 
 public class CancelOrderHandler(
     IOrderRepository orderRepository,
-    IEventBus eventBus)
+    IEventBus eventBus,
+    ILogger<CancelOrderHandler> logger)
     : IRequestHandler<CancelOrderCommand, Result<OrderDto, DomainError>>
 {
     public async Task<Result<OrderDto, DomainError>> Handle(
@@ -23,11 +25,17 @@ public class CancelOrderHandler(
 
         await orderRepository.UpdateAsync(order, ct).ConfigureAwait(false);
 
-        await eventBus.PublishAsync(new OrderCancelledMessage(
-            order.Id,
-            command.Reason,
-            "Customer",
-            order.CancelledAt ?? DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
+        try
+        {
+            await eventBus.PublishAsync(new OrderCancelledMessage(
+                order.Id, command.Reason, "Customer",
+                order.CancelledAt ?? DateTimeOffset.UtcNow), ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to publish OrderCancelledMessage for order {OrderId} — audit/cache will be stale", order.Id);
+        }
 
         return order.ToDto();
     }

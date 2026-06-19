@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OrderProcessing.Domain.Common;
 using System.Net;
 
@@ -17,6 +18,11 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         {
             await WriteProblemAsync(context, StatusCodes.Status400BadRequest,
                 "Validation Failed", ex.Errors.Select(e => e.ErrorMessage).ToList());
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await WriteProblemAsync(context, StatusCodes.Status409Conflict,
+                "Conflict", ["The resource was modified by another request. Please retry."]);
         }
         catch (Exception ex)
         {
