@@ -122,6 +122,6 @@ public class OrdersController(IMediator mediator) : ControllerBase
 }
 
 public record CreateOrderRequest(string CustomerId, List<CreateOrderItemRequest> Items);
-public record CreateOrderItemRequest(Guid ProductId, string ProductName, int Quantity, decimal UnitPrice);
+public record CreateOrderItemRequest(string ProductId, string ProductName, int Quantity, decimal UnitPrice);
 public record UpdateStatusRequest(string Status);
 public record CancelOrderRequest(string Reason);

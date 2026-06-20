@@ -15,7 +15,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 
         builder.Property(i => i.OrderId).HasColumnName("order_id").IsRequired();
 
-        builder.Property(i => i.ProductId).HasColumnName("product_id").IsRequired();
+        builder.Property(i => i.ProductId).HasColumnName("product_id").HasMaxLength(100).IsRequired();
 
         builder.Property(i => i.ProductName)
             .HasColumnName("product_name")

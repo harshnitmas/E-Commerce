@@ -26,7 +26,7 @@ export default function CheckoutPage() {
   const sub = subtotal()
   const total = sub + checkout.deliveryPrice + sub * 0.1
 
-  if (items.length === 0) {
+  if (items.length === 0 && !processing) {
     navigate('/cart')
     return null
   }
@@ -46,9 +46,13 @@ export default function CheckoutPage() {
         })),
       })
 
+      const deliveryLabel = checkout.deliveryOption
+      const deliveryPrice = checkout.deliveryPrice
       clearCart()
       checkout.reset()
-      navigate(`/checkout/success?orderId=${order.orderId}`)
+      navigate(`/checkout/success?orderId=${order.orderId}`, {
+        state: { deliveryLabel, deliveryPrice },
+      })
     } catch {
       toast.error('Something went wrong. Please try again.')
       setProcessing(false)

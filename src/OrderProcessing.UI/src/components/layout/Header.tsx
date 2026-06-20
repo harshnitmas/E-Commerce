@@ -11,7 +11,14 @@ export function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (query.trim()) navigate(`/products?q=${encodeURIComponent(query.trim())}`)
+    if (!query.trim()) return
+    // Route to order search if input looks like an order ID (hex chars, 6–36 long)
+    const looksLikeOrderId = /^[0-9a-f-]{6,36}$/i.test(query.trim())
+    if (looksLikeOrderId) {
+      navigate(`/orders/search?q=${encodeURIComponent(query.trim())}`)
+    } else {
+      navigate(`/products?q=${encodeURIComponent(query.trim())}`)
+    }
   }
 
   return (

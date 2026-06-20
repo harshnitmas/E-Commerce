@@ -10,6 +10,7 @@ const Cart = lazy(() => import('@/pages/Cart'))
 const Checkout = lazy(() => import('@/pages/Checkout'))
 const OrderConfirmation = lazy(() => import('@/pages/OrderConfirmation'))
 const Orders = lazy(() => import('@/pages/Orders'))
+const OrderSearch = lazy(() => import('@/pages/Orders/search'))
 const OrderDetail = lazy(() => import('@/pages/Orders/detail'))
 const OrderTracking = lazy(() => import('@/pages/OrderTracking'))
 const OrderAudit = lazy(() => import('@/pages/OrderAudit'))
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
   { path: '/checkout', element: <CheckoutLayout><Checkout /></CheckoutLayout> },
   { path: '/checkout/success', element: <Layout><OrderConfirmation /></Layout> },
   { path: '/orders', element: <Layout><Orders /></Layout> },
+  { path: '/orders/search', element: <Layout><OrderSearch /></Layout> },
   { path: '/orders/:id', element: <Layout><OrderDetail /></Layout> },
   { path: '/orders/:id/track', element: <Layout><OrderTracking /></Layout> },
   { path: '/orders/:id/audit', element: <Layout><OrderAudit /></Layout> },

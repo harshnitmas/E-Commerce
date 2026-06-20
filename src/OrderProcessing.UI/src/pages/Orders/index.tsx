@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ShoppingBag, Eye, XCircle, RefreshCw } from 'lucide-react'
+import { ShoppingBag, Eye, XCircle, RefreshCw, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useOrdersList, useCancelOrder } from '@/hooks/useOrders'
 import { OrderStatusBadge } from '@/components/order/OrderStatusBadge'
@@ -44,9 +44,17 @@ export default function OrdersPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Your Orders</h1>
-        <button onClick={() => refetch()} className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/orders/search"
+            className="flex items-center gap-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition-colors"
+          >
+            <Search className="h-4 w-4" /> Search Orders
+          </Link>
+          <button onClick={() => refetch()} className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Status Tabs */}

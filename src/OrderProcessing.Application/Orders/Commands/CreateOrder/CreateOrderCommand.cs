@@ -5,7 +5,7 @@ using OrderProcessing.Domain.Common;
 namespace OrderProcessing.Application.Orders.Commands.CreateOrder;
 
 public record CreateOrderItemInput(
-    Guid ProductId,
+    string ProductId,
     string ProductName,
     int Quantity,
     decimal UnitPrice);
