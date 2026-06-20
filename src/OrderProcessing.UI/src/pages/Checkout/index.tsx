@@ -5,7 +5,7 @@ import { useCartStore } from '@/stores/cart.store'
 import { useCheckoutStore } from '@/stores/checkout.store'
 import { useCreateOrder } from '@/hooks/useOrders'
 import { processMockPayment } from '@/mocks/payment.mock'
-import { MOCK_USER } from '@/mocks/user.mock'
+import { useAuthStore } from '@/stores/auth.store'
 import { DELIVERY_OPTIONS } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
 
@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const createOrder = useCreateOrder()
   const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
+  const authUser = useAuthStore((s) => s.user)
 
   const sub = subtotal()
   const total = sub + checkout.deliveryPrice + sub * 0.1
@@ -37,7 +38,7 @@ export default function CheckoutPage() {
       await processMockPayment(total)
 
       const order = await createOrder.mutateAsync({
-        customerId: MOCK_USER.customerId,
+        customerId: authUser?.customerId ?? 'cust-guest',
         items: items.map(({ product, quantity }) => ({
           productId: product.id,
           productName: product.name,
