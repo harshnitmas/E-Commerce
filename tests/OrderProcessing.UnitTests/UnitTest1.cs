@@ -1,10 +1,2 @@
+// This file is intentionally left empty — real tests are in the subfolders.
 namespace OrderProcessing.UnitTests;
-
-public class UnitTest1
-{
-    [Fact]
-    public void Test1()
-    {
-
-    }
-}

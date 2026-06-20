@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Truck, RefreshCw, Headphones, Shield, Clock, Sparkles, ShoppingBag } from 'lucide-react'
+import { ArrowRight, Truck, RefreshCw, Headphones, Shield, Clock, Sparkles, ShoppingBag, Star, ShoppingCart } from 'lucide-react'
 import { MOCK_PRODUCTS, CATEGORIES } from '@/mocks/products.mock'
 import { ProductCard } from '@/components/product/ProductCard'
 import { RecommendationSection } from '@/components/product/RecommendationSection'
 import { useRecommendations } from '@/hooks/useRecommendations'
 import { useAuthStore } from '@/stores/auth.store'
+import { useCartStore } from '@/stores/cart.store'
 import { formatCurrency } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const CATEGORY_ICONS: Record<string, string> = {
   Electronics: '💻', Books: '📚', Clothing: '👕',
@@ -14,11 +16,12 @@ const CATEGORY_ICONS: Record<string, string> = {
 }
 
 export default function HomePage() {
-  const deals = MOCK_PRODUCTS.filter((p) => p.badge === 'Deal').slice(0, 6)
+  const deals = MOCK_PRODUCTS.filter((p) => p.badge === 'Deal').slice(0, 5)
   const featured = MOCK_PRODUCTS.slice(0, 8)
   const bestSellers = MOCK_PRODUCTS.filter((p) => p.badge === 'Best Seller')
   const { recentlyViewed, basedOnBrowsing, basedOnOrders } = useRecommendations()
   const user = useAuthStore((s) => s.user)
+  const addItem = useCartStore((s) => s.addItem)
 
   const hasRecs = recentlyViewed.length > 0 || basedOnBrowsing.length > 0 || basedOnOrders.length > 0
 
@@ -118,21 +121,78 @@ export default function HomePage() {
       </section>
 
       {/* Deals of the Day */}
-      <section className="bg-primary bg-opacity-10 py-10">
+      <section className="py-10">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-6">
-            <span className="text-2xl">🔥</span>
-            <h2 className="text-2xl font-bold text-gray-900">Deals of the Day</h2>
-            <span className="ml-auto text-sm text-gray-500 bg-white px-3 py-1 rounded-full border">Limited time offers</span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 rounded-xl p-2.5">
+                <span className="text-2xl leading-none">🔥</span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Deals of the Day</h2>
+                <p className="text-sm text-gray-400">Handpicked offers — updated daily</p>
+              </div>
+            </div>
+            <Link to="/products" className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-orange-600 transition-colors">
+              View all deals <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {deals.map((p) => (
-              <Link key={p.id} to={`/products/${p.id}`} className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
-                <img src={p.imageUrl} alt={p.name} className="w-full aspect-square object-cover rounded-md mb-2" />
-                <p className="text-xs font-medium text-gray-800 line-clamp-1">{p.name}</p>
-                <p className="text-sm font-bold text-primary">{formatCurrency(p.price)}</p>
-                <p className="text-xs text-gray-400 line-through">{formatCurrency(p.originalPrice)}</p>
-              </Link>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {deals.map((p, i) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 flex flex-col overflow-hidden"
+              >
+                <Link to={`/products/${p.id}`} className="flex flex-col flex-1">
+                  {/* Image */}
+                  <div className="relative overflow-hidden bg-gray-50">
+                    <img
+                      src={p.imageUrl}
+                      alt={p.name}
+                      className="w-full aspect-[4/3] object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                    {/* Discount badge */}
+                    <span className="absolute top-2.5 left-2.5 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
+                      -{p.discountPercent}%
+                    </span>
+                    {/* Savings chip */}
+                    <span className="absolute bottom-2.5 right-2.5 bg-white/90 backdrop-blur-sm text-green-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                      Save {formatCurrency(p.originalPrice - p.price)}
+                    </span>
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-4 flex flex-col flex-1">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{p.brand}</p>
+                    <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug flex-1">{p.name}</p>
+                    <div className="flex items-center gap-1 mt-2 mb-3">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                      <span className="text-xs text-gray-500 font-medium">{p.rating}</span>
+                      <span className="text-xs text-gray-300 ml-0.5">({p.reviewCount.toLocaleString()})</span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-auto">
+                      <span className="text-lg font-bold text-primary">{formatCurrency(p.price)}</span>
+                      <span className="text-xs text-gray-400 line-through">{formatCurrency(p.originalPrice)}</span>
+                    </div>
+                  </div>
+                </Link>
+
+                {/* Add to cart */}
+                <div className="px-4 pb-4">
+                  <button
+                    onClick={() => { addItem(p); toast.success(`${p.name} added to cart!`) }}
+                    className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white font-semibold text-sm py-2.5 rounded-xl transition-colors duration-150"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Add to Cart
+                  </button>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -154,11 +214,11 @@ export default function HomePage() {
             <Link
               key={p.id}
               to={`/products/${p.id}`}
-              className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow"
+              className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow flex flex-col"
             >
               <img src={p.imageUrl} alt={p.name} className="w-full aspect-square object-cover rounded-md mb-2" />
-              <p className="text-xs font-medium text-gray-800 line-clamp-2 mb-1">{p.name}</p>
-              <p className="text-sm font-bold text-gray-900">{formatCurrency(p.price)}</p>
+              <p className="text-xs font-medium text-gray-800 line-clamp-2 mb-1 flex-1">{p.name}</p>
+              <p className="text-sm font-bold text-gray-900 mt-auto">{formatCurrency(p.price)}</p>
             </Link>
           ))}
         </div>

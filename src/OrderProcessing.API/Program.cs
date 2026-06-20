@@ -98,3 +98,6 @@ static async Task SeedDefaultUsersAsync(IServiceProvider services)
 
     await db.SaveChangesAsync();
 }
+
+// Required for WebApplicationFactory<Program> in integration tests.
+public partial class Program { }
