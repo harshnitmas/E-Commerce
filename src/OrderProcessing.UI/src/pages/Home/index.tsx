@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Truck, RefreshCw, Headphones, Shield, Clock, Sparkles, ShoppingBag, Star, ShoppingCart } from 'lucide-react'
+import { ArrowRight, Truck, RefreshCw, Headphones, Shield, Clock, Sparkles, ShoppingBag, Star, ShoppingCart, TrendingUp } from 'lucide-react'
 import { MOCK_PRODUCTS, CATEGORIES } from '@/mocks/products.mock'
 import { ProductCard } from '@/components/product/ProductCard'
 import { RecommendationSection } from '@/components/product/RecommendationSection'
@@ -19,11 +19,11 @@ export default function HomePage() {
   const deals = MOCK_PRODUCTS.filter((p) => p.badge === 'Deal').slice(0, 5)
   const featured = MOCK_PRODUCTS.slice(0, 8)
   const bestSellers = MOCK_PRODUCTS.filter((p) => p.badge === 'Best Seller')
-  const { recentlyViewed, basedOnBrowsing, basedOnOrders } = useRecommendations()
+  const { recentlyViewed, basedOnBrowsing, basedOnOrders, popularPicks } = useRecommendations()
   const user = useAuthStore((s) => s.user)
   const addItem = useCartStore((s) => s.addItem)
 
-  const hasRecs = recentlyViewed.length > 0 || basedOnBrowsing.length > 0 || basedOnOrders.length > 0
+  const hasPersonalRecs = recentlyViewed.length > 0 || basedOnBrowsing.length > 0 || basedOnOrders.length > 0
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -66,42 +66,52 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── PERSONALISED RECOMMENDATIONS (top of all sections) ── */}
-      {hasRecs && (
-        <div className="pt-6 pb-2">
-          {recentlyViewed.length > 0 && (
-            <RecommendationSection
-              title="Recently Viewed"
-              subtitle="Pick up where you left off"
-              products={recentlyViewed}
-              icon={<Clock className="h-6 w-6" />}
-              gradient="blue"
-            />
-          )}
+      {/* ── RECOMMENDATIONS ── */}
+      <div className="pt-6 pb-2">
+        {/* Personalised sections — only once the user has browsing/order history */}
+        {recentlyViewed.length > 0 && (
+          <RecommendationSection
+            title="Recently Viewed"
+            subtitle="Pick up where you left off"
+            products={recentlyViewed}
+            icon={<Clock className="h-6 w-6" />}
+            gradient="blue"
+          />
+        )}
 
-          {basedOnBrowsing.length > 0 && (
-            <RecommendationSection
-              title="Based on Your Browsing History"
-              subtitle="Tailored picks from your recent activity"
-              products={basedOnBrowsing}
-              viewAllCategory={basedOnBrowsing[0]?.category}
-              icon={<Sparkles className="h-6 w-6" />}
-              gradient="orange"
-            />
-          )}
+        {basedOnBrowsing.length > 0 && (
+          <RecommendationSection
+            title="Based on Your Browsing History"
+            subtitle="Tailored picks from your recent activity"
+            products={basedOnBrowsing}
+            viewAllCategory={basedOnBrowsing[0]?.category}
+            icon={<Sparkles className="h-6 w-6" />}
+            gradient="orange"
+          />
+        )}
 
-          {basedOnOrders.length > 0 && (
-            <RecommendationSection
-              title="Inspired by Your Orders"
-              subtitle="More from the categories you love"
-              products={basedOnOrders}
-              viewAllCategory={basedOnOrders[0]?.category}
-              icon={<ShoppingBag className="h-6 w-6" />}
-              gradient="purple"
-            />
-          )}
-        </div>
-      )}
+        {basedOnOrders.length > 0 && (
+          <RecommendationSection
+            title="Inspired by Your Orders"
+            subtitle="More from the categories you love"
+            products={basedOnOrders}
+            viewAllCategory={basedOnOrders[0]?.category}
+            icon={<ShoppingBag className="h-6 w-6" />}
+            gradient="purple"
+          />
+        )}
+
+        {/* Always-visible fallback — shown when no personal history yet */}
+        {!hasPersonalRecs && (
+          <RecommendationSection
+            title="Popular Right Now"
+            subtitle="Top-rated picks loved by our customers"
+            products={popularPicks}
+            icon={<TrendingUp className="h-6 w-6" />}
+            gradient="green"
+          />
+        )}
+      </div>
 
       {/* Categories */}
       <section className="max-w-7xl mx-auto px-4 py-10">

@@ -55,7 +55,11 @@ export const useAuthStore = create<AuthState>()(
 )
 
 function extractError(err: unknown): string | undefined {
-  if (err && typeof err === 'object' && 'response' in err) {
+  if (!err || typeof err !== 'object') return undefined
+  // ApiError shape produced by the Axios response interceptor in client.ts
+  if ('detail' in err) return (err as { detail?: string }).detail
+  // Raw Axios error fallback (e.g. network timeout before interceptor fires)
+  if ('response' in err) {
     const res = (err as { response?: { data?: { detail?: string; title?: string } } }).response
     return res?.data?.detail ?? res?.data?.title
   }

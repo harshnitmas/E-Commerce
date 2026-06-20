@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, User, Lock, Mail, UserCircle } from 'lucide-react'
+import { Eye, EyeOff, User, Lock, Mail, UserCircle, AlertCircle } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 
 type FieldProps = {
@@ -13,14 +13,16 @@ type FieldProps = {
   autoComplete?: string
   rightSlot?: React.ReactNode
   autoFocus?: boolean
+  hasError?: boolean
+  hint?: string
 }
 
-function Field({ label, icon, type = 'text', value, onChange, placeholder, autoComplete, rightSlot, autoFocus }: FieldProps) {
+function Field({ label, icon, type = 'text', value, onChange, placeholder, autoComplete, rightSlot, autoFocus, hasError, hint }: FieldProps) {
   return (
     <div>
       <label className="text-sm font-medium text-gray-700 block mb-1.5">{label}</label>
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>
+        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${hasError ? 'text-red-400' : 'text-gray-400'}`}>{icon}</span>
         <input
           type={type}
           value={value}
@@ -28,12 +30,17 @@ function Field({ label, icon, type = 'text', value, onChange, placeholder, autoC
           placeholder={placeholder}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
-          className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+          className={`w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm focus:outline-none transition-colors ${
+            hasError
+              ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+              : 'border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/10'
+          }`}
         />
         {rightSlot && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2">{rightSlot}</span>
         )}
       </div>
+      {hint && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{hint}</p>}
     </div>
   )
 }
@@ -47,6 +54,7 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
+  const [usernameError, setUsernameError] = useState('')
   const [loading, setLoading] = useState(false)
   const register = useAuthStore((s) => s.register)
   const navigate = useNavigate()
@@ -54,6 +62,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setUsernameError('')
     if (!displayName.trim() || !username.trim() || !email.trim() || !password) {
       setError('Please fill in all fields')
       return
@@ -69,7 +78,16 @@ export default function RegisterPage() {
     setLoading(true)
     const result = await register(displayName.trim(), username.trim(), email.trim(), password)
     setLoading(false)
-    if (!result.success) { setError(result.error ?? 'Registration failed'); return }
+    if (!result.success) {
+      const msg = result.error ?? 'Registration failed'
+      // Surface username-taken errors directly on the username field
+      if (msg.toLowerCase().includes('username') || msg.toLowerCase().includes('taken')) {
+        setUsernameError(msg)
+      } else {
+        setError(msg)
+      }
+      return
+    }
     navigate('/')
   }
 
@@ -109,9 +127,11 @@ export default function RegisterPage() {
               label="Username"
               icon={<User className="h-4 w-4" />}
               value={username}
-              onChange={setUsername}
+              onChange={(v) => { setUsername(v); setUsernameError('') }}
               placeholder="Choose a username"
               autoComplete="username"
+              hasError={!!usernameError}
+              hint={usernameError || undefined}
             />
             <Field
               label="Email"
@@ -144,9 +164,10 @@ export default function RegisterPage() {
             />
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {error}
-              </p>
+              <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
             )}
 
             <button

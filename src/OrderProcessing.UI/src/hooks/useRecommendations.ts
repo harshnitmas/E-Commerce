@@ -9,6 +9,7 @@ export type Recommendations = {
   recentlyViewed: Product[]
   basedOnBrowsing: Product[]
   basedOnOrders: Product[]
+  popularPicks: Product[]
 }
 
 function topCategories(products: Product[]): string[] {
@@ -65,6 +66,11 @@ export function useRecommendations(): Recommendations {
         .slice(0, 10)
     }
 
-    return { recentlyViewed, basedOnBrowsing, basedOnOrders }
+    // Always-visible fallback: top-rated products across all categories
+    const popularPicks = [...MOCK_PRODUCTS]
+      .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
+      .slice(0, 10)
+
+    return { recentlyViewed, basedOnBrowsing, basedOnOrders, popularPicks }
   }, [viewedIds, ordersData, user])
 }
