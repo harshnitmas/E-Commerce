@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Star, ShoppingCart, Minus, Plus, ArrowLeft, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { MOCK_PRODUCTS } from '@/mocks/products.mock'
 import { useCartStore } from '@/stores/cart.store'
+import { useActivityStore } from '@/stores/activity.store'
 import { formatCurrency } from '@/lib/utils'
 import { ProductCard } from '@/components/product/ProductCard'
 
@@ -12,6 +13,11 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const product = MOCK_PRODUCTS.find((p) => p.id === id)
+  const recordView = useActivityStore((s) => s.recordView)
+
+  useEffect(() => {
+    if (id) recordView(id)
+  }, [id, recordView])
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const [activeImg, setActiveImg] = useState(0)

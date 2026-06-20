@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using OrderProcessing.API.Middleware;
 using OrderProcessing.Application.DependencyInjection;
+using OrderProcessing.Application.Interfaces;
+using OrderProcessing.Domain.Entities;
 using OrderProcessing.Infrastructure.DependencyInjection;
 using OrderProcessing.Infrastructure.Persistence.PostgreSQL;
 using Serilog;
@@ -58,10 +60,10 @@ try
         app.UseSwagger();
         app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Order Processing API v1"));
 
-        // Apply migrations on startup in development
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
+        await SeedDefaultUsersAsync(scope.ServiceProvider);
     }
 
     app.UseCors("AllowUI");
@@ -78,4 +80,21 @@ catch (Exception ex) when (ex is not HostAbortedException)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// Seeds admin and Harsh on first run. Idempotent — skips if any user already exists.
+static async Task SeedDefaultUsersAsync(IServiceProvider services)
+{
+    AppDbContext db = services.GetRequiredService<AppDbContext>();
+    IPasswordHasher hasher = services.GetRequiredService<IPasswordHasher>();
+
+    if (await db.Users.AnyAsync()) return;
+
+    // Preserve Harsh's existing customerId so orders placed before this migration still link up.
+    db.Users.Add(User.Create("admin", "Administrator", "admin@shopnow.com",
+        hasher.Hash("admin"), "admin"));
+    db.Users.Add(User.Create("Harsh", "Harsh Kumar", "harsh.nitmas@gmail.com",
+        hasher.Hash("Harsh"), "customer", "cust-550e8400-e29b-41d4-a716-446655440000"));
+
+    await db.SaveChangesAsync();
 }

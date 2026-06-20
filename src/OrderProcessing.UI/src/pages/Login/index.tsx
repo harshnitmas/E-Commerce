@@ -20,8 +20,7 @@ export default function LoginPage() {
     if (!username.trim() || !password) { setError('Please fill in all fields'); return }
     setLoading(true)
     setError('')
-    await new Promise<void>((r) => setTimeout(r, 300))
-    const result = login(username.trim(), password)
+    const result = await login(username.trim(), password)
     setLoading(false)
     if (!result.success) { setError(result.error ?? 'Login failed'); return }
     navigate(from, { replace: true })

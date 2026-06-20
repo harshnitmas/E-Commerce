@@ -1,8 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Trash2, Minus, Plus, ShoppingBag, Tag } from 'lucide-react'
-import { useState } from 'react'
+import { Trash2, Minus, Plus, ShoppingBag, Tag, Sparkles } from 'lucide-react'
+import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { useCartStore } from '@/stores/cart.store'
+import { MOCK_PRODUCTS } from '@/mocks/products.mock'
+import { RecommendationSection } from '@/components/product/RecommendationSection'
 import { formatCurrency } from '@/lib/utils'
 import { PROMO_CODES } from '@/lib/constants'
 
@@ -11,6 +13,19 @@ export default function CartPage() {
   const [promoInput, setPromoInput] = useState('')
   const [discount, setDiscount] = useState(0)
   const navigate = useNavigate()
+
+  const cartProductIds = new Set(items.map((i) => i.product.id))
+  const youMightLike = useMemo(() => {
+    const cartCategories = [...new Set(items.map((i) => i.product.category))]
+    return cartCategories
+      .flatMap((cat) =>
+        MOCK_PRODUCTS.filter((p) => p.category === cat && !cartProductIds.has(p.id))
+          .sort((a, b) => b.rating - a.rating)
+      )
+      .filter((p, i, arr) => arr.findIndex((x) => x.id === p.id) === i)
+      .slice(0, 8)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items])
 
   const applyPromo = () => {
     const pct = PROMO_CODES[promoInput.toUpperCase()]
@@ -82,6 +97,7 @@ export default function CartPage() {
           </Link>
         </div>
 
+
         {/* Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
@@ -127,6 +143,19 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* You might also like */}
+      {youMightLike.length > 0 && (
+        <div className="mt-10">
+          <RecommendationSection
+            title="You Might Also Like"
+            subtitle="More great picks based on your cart"
+            products={youMightLike}
+            icon={<Sparkles className="h-6 w-6" />}
+            gradient="green"
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -53,6 +53,14 @@ export interface ApiError {
   correlationId?: string
 }
 
+export type UserDto = {
+  username: string
+  displayName: string
+  email: string
+  role: string
+  customerId: string
+}
+
 export interface CreateOrderRequest {
   customerId: string
   items: {

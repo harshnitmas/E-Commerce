@@ -26,6 +26,15 @@ public static class DomainErrors
             DomainError.BusinessRule("Order.AlreadyCancelled", "A cancelled order cannot be modified.");
     }
 
+    public static class User
+    {
+        public static readonly DomainError UsernameTaken =
+            DomainError.Conflict("User.UsernameTaken", "Username is already taken.");
+
+        public static readonly DomainError InvalidCredentials =
+            DomainError.Validation("User.InvalidCredentials", "Invalid username or password.");
+    }
+
     public static class OrderItem
     {
         public static readonly DomainError ProductNameRequired =

@@ -67,8 +67,7 @@ export default function RegisterPage() {
       return
     }
     setLoading(true)
-    await new Promise<void>((r) => setTimeout(r, 400))
-    const result = register(displayName.trim(), username.trim(), email.trim(), password)
+    const result = await register(displayName.trim(), username.trim(), email.trim(), password)
     setLoading(false)
     if (!result.success) { setError(result.error ?? 'Registration failed'); return }
     navigate('/')

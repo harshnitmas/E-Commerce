@@ -14,6 +14,7 @@ using OrderProcessing.Infrastructure.Persistence.MongoDB;
 using OrderProcessing.Infrastructure.Persistence.PostgreSQL;
 using OrderProcessing.Infrastructure.Persistence.Redis;
 using OrderProcessing.Infrastructure.Repositories;
+using OrderProcessing.Infrastructure.Security;
 using StackExchange.Redis;
 
 namespace OrderProcessing.Infrastructure.DependencyInjection;
@@ -31,6 +32,8 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IOrderAuditRepository, OrderAuditRepository>();
         services.AddScoped<IOrderCacheService, OrderCacheService>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IEventBus, MassTransitEventBus>();
         services.AddHostedService<OrderProcessingJob>();
 
