@@ -13,6 +13,14 @@ public class GetOrderByIdHandler(IOrderRepository orderRepository)
         GetOrderByIdQuery query, CancellationToken ct)
     {
         var order = await orderRepository.GetByIdAsync(query.OrderId, ct);
-        return order is null ? DomainErrors.Order.NotFound : order.ToDto();
+        if (order is null) return DomainErrors.Order.NotFound;
+
+        // Ownership check: if a customer ID was provided, verify the order belongs to them.
+        // Return NotFound (not Forbidden) to avoid leaking whether the order exists.
+        if (!string.IsNullOrEmpty(query.RequestingCustomerId)
+            && order.CustomerId != query.RequestingCustomerId)
+            return DomainErrors.Order.AccessDenied;
+
+        return order.ToDto();
     }
 }

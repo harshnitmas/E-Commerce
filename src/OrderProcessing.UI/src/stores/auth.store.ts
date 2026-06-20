@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '@/api/auth.api'
+import { useActivityStore } from '@/stores/activity.store'
 
 export type AuthUser = {
   username: string
@@ -44,7 +45,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => set({ user: null }),
+      logout: () => {
+        useActivityStore.getState().clearHistory()
+        set({ user: null })
+      },
     }),
     {
       name: 'shopnow-auth',

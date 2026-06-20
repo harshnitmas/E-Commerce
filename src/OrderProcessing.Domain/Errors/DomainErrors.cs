@@ -9,6 +9,9 @@ public static class DomainErrors
         public static readonly DomainError NotFound =
             DomainError.NotFound("Order.NotFound", "Order was not found.");
 
+        public static readonly DomainError AccessDenied =
+            DomainError.NotFound("Order.NotFound", "Order was not found.");
+
         public static readonly DomainError MustHaveItems =
             DomainError.Validation("Order.MustHaveItems", "An order must contain at least one item.");
 

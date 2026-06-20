@@ -9,13 +9,16 @@ export const ordersApi = {
     return res.data
   },
 
-  getById: async (id: string): Promise<OrderDto> => {
-    const res = await apiClient.get<OrderDto>(`/api/v1/orders/${id}`)
+  getById: async (id: string, customerId?: string): Promise<OrderDto> => {
+    const res = await apiClient.get<OrderDto>(`/api/v1/orders/${id}`, {
+      params: customerId ? { customerId } : undefined,
+    })
     return res.data
   },
 
   list: async (params: {
     status?: OrderStatus
+    customerId?: string
     page?: number
     pageSize?: number
   }): Promise<PagedResult<OrderDto>> => {

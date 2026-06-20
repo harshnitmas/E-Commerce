@@ -4,4 +4,4 @@ using OrderProcessing.Domain.Common;
 
 namespace OrderProcessing.Application.Orders.Queries.GetOrderById;
 
-public record GetOrderByIdQuery(Guid OrderId) : IRequest<Result<OrderDto, DomainError>>;
+public record GetOrderByIdQuery(Guid OrderId, string? RequestingCustomerId = null) : IRequest<Result<OrderDto, DomainError>>;

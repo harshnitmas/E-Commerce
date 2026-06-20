@@ -23,17 +23,17 @@ public class OrderCacheService(IConnectionMultiplexer redis, ILogger<OrderCacheS
         return value.TryParse(out long version) ? version : 0;
     }
 
-    private static string BuildKey(long version, OrderStatus? status, int page, int pageSize)
-        => $"orders:list:v{version}:{status?.ToString() ?? "all"}:{page}:{pageSize}";
+    private static string BuildKey(long version, OrderStatus? status, string? customerId, int page, int pageSize)
+        => $"orders:list:v{version}:{status?.ToString() ?? "all"}:{customerId ?? "all"}:{page}:{pageSize}";
 
     public async Task<PagedResult<OrderDto>?> GetListAsync(
-        OrderStatus? status, int page, int pageSize, CancellationToken ct = default)
+        OrderStatus? status, string? customerId, int page, int pageSize, CancellationToken ct = default)
     {
         try
         {
             IDatabase db = redis.GetDatabase();
             long version = await GetVersionAsync(db).ConfigureAwait(false);
-            RedisValue cached = await db.StringGetAsync(BuildKey(version, status, page, pageSize)).ConfigureAwait(false);
+            RedisValue cached = await db.StringGetAsync(BuildKey(version, status, customerId, page, pageSize)).ConfigureAwait(false);
             if (!cached.HasValue) return null;
             return JsonSerializer.Deserialize<PagedResult<OrderDto>>(cached!, JsonOptions);
         }
@@ -45,7 +45,7 @@ public class OrderCacheService(IConnectionMultiplexer redis, ILogger<OrderCacheS
     }
 
     public async Task SetListAsync(
-        OrderStatus? status, int page, int pageSize,
+        OrderStatus? status, string? customerId, int page, int pageSize,
         PagedResult<OrderDto> result, CancellationToken ct = default)
     {
         try
@@ -53,7 +53,7 @@ public class OrderCacheService(IConnectionMultiplexer redis, ILogger<OrderCacheS
             IDatabase db = redis.GetDatabase();
             long version = await GetVersionAsync(db).ConfigureAwait(false);
             string json = JsonSerializer.Serialize(result, JsonOptions);
-            await db.StringSetAsync(BuildKey(version, status, page, pageSize), json, Ttl).ConfigureAwait(false);
+            await db.StringSetAsync(BuildKey(version, status, customerId, page, pageSize), json, Ttl).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

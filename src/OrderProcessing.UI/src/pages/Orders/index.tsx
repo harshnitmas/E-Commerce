@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useOrdersList, useCancelOrder } from '@/hooks/useOrders'
 import { OrderStatusBadge } from '@/components/order/OrderStatusBadge'
 import { formatCurrency, formatDate, truncateId } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth.store'
 import type { OrderStatus } from '@/api/types'
 
 const STATUS_TABS: { label: string; value: OrderStatus | '' }[] = [
@@ -20,9 +21,11 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('')
   const [page, setPage] = useState(1)
   const [cancelDialog, setCancelDialog] = useState<{ id: string; reason: string } | null>(null)
+  const customerId = useAuthStore((s) => s.user?.customerId)
 
   const { data, isLoading, refetch } = useOrdersList({
     status: statusFilter || undefined,
+    customerId,
     page,
     pageSize: 10,
   })

@@ -13,11 +13,11 @@ public class ListOrdersHandler(
     public async Task<Result<PagedResult<OrderDto>, DomainError>> Handle(
         ListOrdersQuery query, CancellationToken ct)
     {
-        var cached = await cacheService.GetListAsync(query.Status, query.Page, query.PageSize, ct);
+        var cached = await cacheService.GetListAsync(query.Status, query.CustomerId, query.Page, query.PageSize, ct);
         if (cached is not null) return cached;
 
         var (items, totalCount) = await orderRepository.ListAsync(
-            query.Status, query.Page, query.PageSize, ct);
+            query.Status, query.CustomerId, query.Page, query.PageSize, ct);
 
         var result = new PagedResult<OrderDto>(
             items.Select(o => o.ToDto()).ToList(),
@@ -25,7 +25,7 @@ public class ListOrdersHandler(
             query.PageSize,
             totalCount);
 
-        await cacheService.SetListAsync(query.Status, query.Page, query.PageSize, result, ct);
+        await cacheService.SetListAsync(query.Status, query.CustomerId, query.Page, query.PageSize, result, ct);
 
         return result;
     }

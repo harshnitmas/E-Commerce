@@ -25,7 +25,7 @@ function topCategories(products: Product[]): string[] {
 export function useRecommendations(): Recommendations {
   const viewedIds = useActivityStore((s) => s.viewedProductIds)
   const user = useAuthStore((s) => s.user)
-  const { data: ordersData } = useOrdersList({ page: 1, pageSize: 50 })
+  const { data: ordersData } = useOrdersList({ page: 1, pageSize: 50, customerId: user?.customerId })
 
   return useMemo<Recommendations>(() => {
     // Recently viewed — resolve IDs to Product objects preserving recency order

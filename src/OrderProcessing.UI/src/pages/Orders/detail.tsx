@@ -3,13 +3,15 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useOrder, useCancelOrder } from '@/hooks/useOrders'
+import { useAuthStore } from '@/stores/auth.store'
 import { OrderStatusBadge } from '@/components/order/OrderStatusBadge'
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline'
 import { formatCurrency, formatDate, truncateId } from '@/lib/utils'
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: order, isLoading } = useOrder(id!)
+  const customerId = useAuthStore((s) => s.user?.customerId)
+  const { data: order, isLoading } = useOrder(id!, customerId)
   const cancelOrder = useCancelOrder()
   const [cancelReason, setCancelReason] = useState('')
   const [showCancel, setShowCancel] = useState(false)

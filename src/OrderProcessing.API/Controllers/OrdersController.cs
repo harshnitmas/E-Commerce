@@ -41,9 +41,10 @@ public class OrdersController(IMediator mediator) : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<OrderDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetOrder(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetOrder(
+        Guid id, [FromQuery] string? customerId, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetOrderByIdQuery(id), ct);
+        var result = await mediator.Send(new GetOrderByIdQuery(id, customerId), ct);
         return result.Match<IActionResult>(
             order => Ok(ApiResponse<OrderDto>.Ok(order, CorrelationId)),
             error => ErrorResponse(error));
@@ -53,6 +54,7 @@ public class OrdersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<PagedResult<OrderDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListOrders(
         [FromQuery] string? status,
+        [FromQuery] string? customerId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken ct = default)
@@ -61,7 +63,7 @@ public class OrdersController(IMediator mediator) : ControllerBase
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<OrderStatus>(status, true, out var s))
             parsedStatus = s;
 
-        var result = await mediator.Send(new ListOrdersQuery(parsedStatus, page, pageSize), ct);
+        var result = await mediator.Send(new ListOrdersQuery(parsedStatus, page, pageSize, customerId), ct);
         return result.Match<IActionResult>(
             paged => Ok(ApiResponse<PagedResult<OrderDto>>.Ok(paged, CorrelationId)),
             error => ErrorResponse(error));

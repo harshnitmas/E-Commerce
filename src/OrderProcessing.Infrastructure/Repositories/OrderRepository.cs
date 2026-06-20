@@ -14,7 +14,7 @@ public class OrderRepository(AppDbContext dbContext) : IOrderRepository
             .FirstOrDefaultAsync(o => o.Id == orderId, ct);
 
     public async Task<(List<Order> Items, int TotalCount)> ListAsync(
-        OrderStatus? status, int page, int pageSize, CancellationToken ct = default)
+        OrderStatus? status, string? customerId, int page, int pageSize, CancellationToken ct = default)
     {
         var query = dbContext.Orders
             .Include(o => o.Items)
@@ -23,6 +23,9 @@ public class OrderRepository(AppDbContext dbContext) : IOrderRepository
 
         if (status.HasValue)
             query = query.Where(o => o.Status == status.Value);
+
+        if (!string.IsNullOrEmpty(customerId))
+            query = query.Where(o => o.CustomerId == customerId);
 
         var totalCount = await query.CountAsync(ct);
         var items = await query

@@ -9,7 +9,7 @@ export const ORDER_KEYS = {
   audit: (id: string) => ['orders', id, 'audit'] as const,
 }
 
-export function useOrdersList(params: { status?: OrderStatus; page?: number; pageSize?: number }) {
+export function useOrdersList(params: { status?: OrderStatus; customerId?: string; page?: number; pageSize?: number }) {
   return useQuery({
     queryKey: ORDER_KEYS.list(params),
     queryFn: () => ordersApi.list(params),
@@ -17,10 +17,10 @@ export function useOrdersList(params: { status?: OrderStatus; page?: number; pag
   })
 }
 
-export function useOrder(id: string) {
+export function useOrder(id: string, customerId?: string) {
   return useQuery({
     queryKey: ORDER_KEYS.detail(id),
-    queryFn: () => ordersApi.getById(id),
+    queryFn: () => ordersApi.getById(id, customerId),
     staleTime: 30_000,
     enabled: !!id,
   })

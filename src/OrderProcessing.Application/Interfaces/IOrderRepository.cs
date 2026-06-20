@@ -7,7 +7,7 @@ public interface IOrderRepository
 {
     Task<Order?> GetByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<(List<Order> Items, int TotalCount)> ListAsync(
-        OrderStatus? status, int page, int pageSize, CancellationToken ct = default);
+        OrderStatus? status, string? customerId, int page, int pageSize, CancellationToken ct = default);
     Task<List<Order>> GetPendingOrdersOlderThanAsync(
         DateTimeOffset cutoff, CancellationToken ct = default);
     Task AddAsync(Order order, CancellationToken ct = default);

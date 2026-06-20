@@ -82,21 +82,18 @@ finally
     Log.CloseAndFlush();
 }
 
-// Seeds admin and Harsh on first run. Idempotent — skips if any user already exists.
+// Ensures the admin account always exists. Idempotent — safe to run on every startup.
 static async Task SeedDefaultUsersAsync(IServiceProvider services)
 {
     AppDbContext db = services.GetRequiredService<AppDbContext>();
     IPasswordHasher hasher = services.GetRequiredService<IPasswordHasher>();
 
-    if (await db.Users.AnyAsync()) return;
-
-    // Preserve Harsh's existing customerId so orders placed before this migration still link up.
-    db.Users.Add(User.Create("admin", "Administrator", "admin@shopnow.com",
-        hasher.Hash("admin"), "admin"));
-    db.Users.Add(User.Create("Harsh", "Harsh Kumar", "harsh.nitmas@gmail.com",
-        hasher.Hash("Harsh"), "customer", "cust-550e8400-e29b-41d4-a716-446655440000"));
-
-    await db.SaveChangesAsync();
+    if (!await db.Users.AnyAsync(u => u.Username == "admin"))
+    {
+        db.Users.Add(User.Create("admin", "Administrator", "admin@shopnow.com",
+            hasher.Hash("admin"), "admin"));
+        await db.SaveChangesAsync();
+    }
 }
 
 // Required for WebApplicationFactory<Program> in integration tests.

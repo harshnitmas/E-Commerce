@@ -107,6 +107,7 @@ public class OrderProcessingWebApplicationFactory : WebApplicationFactory<Progra
             cacheMock
                 .Setup(c => c.GetListAsync(
                     It.IsAny<OrderStatus?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<CancellationToken>()))
@@ -114,6 +115,7 @@ public class OrderProcessingWebApplicationFactory : WebApplicationFactory<Progra
             cacheMock
                 .Setup(c => c.SetListAsync(
                     It.IsAny<OrderStatus?>(),
+                    It.IsAny<string?>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<PagedResult<OrderDto>>(),

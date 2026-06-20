@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, Truck } from 'lucide-react'
 import { useOrder } from '@/hooks/useOrders'
+import { useAuthStore } from '@/stores/auth.store'
 import { OrderStatusBadge } from '@/components/order/OrderStatusBadge'
 import { formatDate, truncateId } from '@/lib/utils'
 import type { OrderStatus } from '@/api/types'
@@ -22,7 +23,8 @@ function getTrackingEvents(status: OrderStatus, createdAt: string) {
 
 export default function OrderTrackingPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: order, isLoading } = useOrder(id!)
+  const customerId = useAuthStore((s) => s.user?.customerId)
+  const { data: order, isLoading } = useOrder(id!, customerId)
 
   if (isLoading) return <div className="max-w-3xl mx-auto px-4 py-8"><div className="h-96 bg-gray-100 rounded-xl animate-pulse" /></div>
   if (!order) return <div className="text-center py-24 text-gray-500">Order not found</div>
