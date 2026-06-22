@@ -14,16 +14,30 @@ namespace OrderProcessing.UnitTests.Orders;
 public class CreateOrderHandlerTests
 {
     private readonly Mock<IOrderRepository> _orderRepositoryMock = new();
+    private readonly Mock<IProductRepository> _productRepositoryMock = new();
+    private readonly Mock<IInventoryReservationRepository> _reservationRepositoryMock = new();
     private readonly Mock<IEventBus> _eventBusMock = new();
     private readonly NullLogger<CreateOrderHandler> _logger = new();
 
     private CreateOrderHandler CreateHandler() =>
-        new(_orderRepositoryMock.Object, _eventBusMock.Object, _logger);
+        new(_orderRepositoryMock.Object, _productRepositoryMock.Object,
+            _reservationRepositoryMock.Object, _eventBusMock.Object, _logger);
 
     private static List<CreateOrderItemInput> ValidItems() =>
     [
         new CreateOrderItemInput("prod-1", "Widget A", 2, 15.00m)
     ];
+
+    public CreateOrderHandlerTests()
+    {
+        // Default: no products in inventory — direct deduct path returns empty list (non-fatal skip)
+        _productRepositoryMock
+            .Setup(r => r.GetByExternalIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _productRepositoryMock
+            .Setup(r => r.UpdateRangeAsync(It.IsAny<IEnumerable<Product>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+    }
 
     [Fact]
     public async Task Handle_WithEmptyItemsList_ReturnsMustHaveItemsValidationError()

@@ -12,4 +12,5 @@ public record CreateOrderItemInput(
 
 public record CreateOrderCommand(
     string CustomerId,
-    List<CreateOrderItemInput> Items) : IRequest<Result<OrderDto, DomainError>>;
+    List<CreateOrderItemInput> Items,
+    List<Guid>? ReservationIds = null) : IRequest<Result<OrderDto, DomainError>>;

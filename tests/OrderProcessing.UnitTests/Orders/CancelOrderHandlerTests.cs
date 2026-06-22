@@ -15,11 +15,12 @@ namespace OrderProcessing.UnitTests.Orders;
 public class CancelOrderHandlerTests
 {
     private readonly Mock<IOrderRepository> _orderRepositoryMock = new();
+    private readonly Mock<IProductRepository> _productRepositoryMock = new();
     private readonly Mock<IEventBus> _eventBusMock = new();
     private readonly NullLogger<CancelOrderHandler> _logger = new();
 
     private CancelOrderHandler CreateHandler() =>
-        new(_orderRepositoryMock.Object, _eventBusMock.Object, _logger);
+        new(_orderRepositoryMock.Object, _productRepositoryMock.Object, _eventBusMock.Object, _logger);
 
     private static Order BuildPendingOrder()
     {
@@ -28,6 +29,17 @@ public class CancelOrderHandlerTests
         Result<Order, DomainError> orderResult = Order.Create("cust-1", [itemResult.Value]);
         orderResult.IsSuccess.Should().BeTrue();
         return orderResult.Value;
+    }
+
+    public CancelOrderHandlerTests()
+    {
+        // Default: no products found — stock restore is a no-op skip (non-fatal)
+        _productRepositoryMock
+            .Setup(r => r.GetByExternalIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _productRepositoryMock
+            .Setup(r => r.UpdateRangeAsync(It.IsAny<IEnumerable<Product>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
     }
 
     [Fact]

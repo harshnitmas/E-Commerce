@@ -4,10 +4,12 @@ import { toast } from 'sonner'
 import { useCartStore } from '@/stores/cart.store'
 import { useCheckoutStore } from '@/stores/checkout.store'
 import { useCreateOrder } from '@/hooks/useOrders'
+import { useReserveStock, useReleaseReservations } from '@/hooks/useProducts'
 import { processMockPayment } from '@/mocks/payment.mock'
 import { useAuthStore } from '@/stores/auth.store'
 import { DELIVERY_OPTIONS } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
+import type { ReservationDto } from '@/api/types'
 
 type Step = 'address' | 'delivery' | 'payment' | 'review'
 const STEPS: Step[] = ['address', 'delivery', 'payment', 'review']
@@ -17,9 +19,12 @@ const STEP_LABELS: Record<Step, string> = {
 
 export default function CheckoutPage() {
   const [step, setStep] = useState<Step>('address')
+  const [reservations, setReservations] = useState<ReservationDto[]>([])
   const { items, subtotal, clearCart } = useCartStore()
   const checkout = useCheckoutStore()
   const createOrder = useCreateOrder()
+  const reserveStock = useReserveStock()
+  const releaseReservations = useReleaseReservations()
   const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
   const authUser = useAuthStore((s) => s.user)
@@ -30,6 +35,32 @@ export default function CheckoutPage() {
   if (items.length === 0 && !processing) {
     navigate('/cart')
     return null
+  }
+
+  const handleGoToReview = async () => {
+    if (!authUser) { toast.error('Please log in to continue.'); return }
+    try {
+      const reserved = await reserveStock.mutateAsync({
+        customerId: authUser.customerId,
+        items: items.map(({ product, quantity }) => ({
+          externalProductId: product.id,
+          quantity,
+        })),
+      })
+      setReservations(reserved)
+      setStep('review')
+    } catch (err) {
+      const detail = (err as { detail?: string }).detail
+      toast.error(detail ?? 'Some items are out of stock or unavailable. Please update your cart.')
+    }
+  }
+
+  const handleGoBack = async (to: Step) => {
+    if (reservations.length > 0) {
+      await releaseReservations.mutateAsync(reservations.map((r) => r.reservationId)).catch(() => null)
+      setReservations([])
+    }
+    setStep(to)
   }
 
   const handlePlaceOrder = async () => {
@@ -45,12 +76,14 @@ export default function CheckoutPage() {
           quantity,
           unitPrice: product.price,
         })),
+        reservationIds: reservations.map((r) => r.reservationId),
       })
 
       const deliveryLabel = checkout.deliveryOption
       const deliveryPrice = checkout.deliveryPrice
       clearCart()
       checkout.reset()
+      setReservations([])
       navigate(`/checkout/success?orderId=${order.orderId}`, {
         state: { deliveryLabel, deliveryPrice },
       })
@@ -62,19 +95,23 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Simplified header */}
-      <div className="bg-secondary py-4 px-4 text-center">
+      <div className="bg-secondary py-4 px-4 text-center relative">
+        <button
+          onClick={() => navigate('/')}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
+        >
+          ← Home
+        </button>
         <span className="text-primary font-bold text-2xl">ShopNow</span>
         <span className="text-gray-300 ml-3 text-sm">Secure Checkout</span>
       </div>
 
-      {/* Stepper */}
       <div className="max-w-4xl mx-auto px-4 pt-6">
         <div className="flex justify-center gap-1 mb-8">
           {STEPS.map((s) => (
             <button
               key={s}
-              onClick={() => { if (STEPS.indexOf(s) < STEPS.indexOf(step)) setStep(s) }}
+              onClick={() => { if (STEPS.indexOf(s) < STEPS.indexOf(step)) handleGoBack(s) }}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 s === step ? 'bg-primary text-white' :
                 STEPS.indexOf(s) < STEPS.indexOf(step) ? 'bg-green-100 text-green-700 cursor-pointer' :
@@ -87,23 +124,24 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Step content */}
           <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-6">
-            {step === 'address' && (
-              <AddressStep onNext={() => setStep('delivery')} />
-            )}
-            {step === 'delivery' && (
-              <DeliveryStep onNext={() => setStep('payment')} />
-            )}
+            {step === 'address' && <AddressStep onNext={() => setStep('delivery')} />}
+            {step === 'delivery' && <DeliveryStep onNext={() => setStep('payment')} />}
             {step === 'payment' && (
-              <PaymentStep onNext={() => setStep('review')} />
+              <PaymentStep
+                onNext={handleGoToReview}
+                reserving={reserveStock.isPending}
+              />
             )}
             {step === 'review' && (
-              <ReviewStep onPlaceOrder={handlePlaceOrder} processing={processing} />
+              <ReviewStep
+                onPlaceOrder={handlePlaceOrder}
+                processing={processing}
+                reservations={reservations}
+              />
             )}
           </div>
 
-          {/* Order summary */}
           <div className="bg-white rounded-xl shadow-sm p-5 h-fit">
             <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
             <div className="space-y-2 mb-4">
@@ -197,7 +235,7 @@ function DeliveryStep({ onNext }: { onNext: () => void }) {
   )
 }
 
-function PaymentStep({ onNext }: { onNext: () => void }) {
+function PaymentStep({ onNext, reserving }: { onNext: () => void; reserving: boolean }) {
   const [card, setCard] = useState({ number: '', name: '', expiry: '', cvv: '' })
   const update = (k: keyof typeof card, v: string) => setCard((c) => ({ ...c, [k]: v }))
 
@@ -236,21 +274,41 @@ function PaymentStep({ onNext }: { onNext: () => void }) {
         </div>
       </div>
       <p className="text-xs text-gray-400 mt-4 flex items-center gap-1">🔒 Your payment is encrypted and secure</p>
-      <button onClick={onNext} className="mt-6 bg-primary text-white px-8 py-3 rounded-md font-semibold hover:bg-orange-600 transition-colors">
-        Review Order
+      <button
+        onClick={onNext}
+        disabled={reserving}
+        className="mt-6 bg-primary text-white px-8 py-3 rounded-md font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60"
+      >
+        {reserving ? 'Checking availability...' : 'Review Order'}
       </button>
     </div>
   )
 }
 
-function ReviewStep({ onPlaceOrder, processing }: { onPlaceOrder: () => void; processing: boolean }) {
+function ReviewStep({
+  onPlaceOrder, processing, reservations,
+}: {
+  onPlaceOrder: () => void
+  processing: boolean
+  reservations: ReservationDto[]
+}) {
   const { address, deliveryOption, deliveryPrice } = useCheckoutStore()
   const { items, subtotal } = useCartStore()
   const total = subtotal() + deliveryPrice + subtotal() * 0.1
 
+  const expiresAt = reservations[0]?.expiresAt
+    ? new Date(reservations[0].expiresAt).toLocaleTimeString()
+    : null
+
   return (
     <div>
       <h2 className="text-lg font-bold text-gray-900 mb-5">Review Your Order</h2>
+
+      {expiresAt && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm text-amber-700">
+          Items held until <strong>{expiresAt}</strong>. Complete your order before then.
+        </div>
+      )}
 
       <div className="space-y-4 mb-6">
         <div className="border border-gray-100 rounded-lg p-4">

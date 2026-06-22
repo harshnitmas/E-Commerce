@@ -2,43 +2,34 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Interfaces;
-using OrderProcessing.Application.Messages;
 using OrderProcessing.Domain.Common;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Errors;
 
-namespace OrderProcessing.Application.Orders.Commands.CancelOrder;
+namespace OrderProcessing.Application.Orders.Commands.ProcessRefund;
 
-public class CancelOrderHandler(
+public class ProcessRefundHandler(
     IOrderRepository orderRepository,
     IProductRepository productRepository,
-    IEventBus eventBus,
-    ILogger<CancelOrderHandler> logger)
-    : IRequestHandler<CancelOrderCommand, Result<OrderDto, DomainError>>
+    ILogger<ProcessRefundHandler> logger)
+    : IRequestHandler<ProcessRefundCommand, Result<OrderDto, DomainError>>
 {
     public async Task<Result<OrderDto, DomainError>> Handle(
-        CancelOrderCommand command, CancellationToken ct)
+        ProcessRefundCommand command, CancellationToken ct)
     {
         Order? order = await orderRepository.GetByIdAsync(command.OrderId, ct).ConfigureAwait(false);
         if (order is null) return DomainErrors.Order.NotFound;
 
-        Result<Order, DomainError> result = order.Cancel(command.Reason);
+        Result<Order, DomainError> result = command.Approve
+            ? order.ApproveRefund()
+            : order.RejectRefund();
+
         if (result.IsFailure) return result.Error;
 
-        await RestoreStockAsync(order, ct).ConfigureAwait(false);
-        await orderRepository.UpdateAsync(order, ct).ConfigureAwait(false);
+        if (command.Approve)
+            await RestoreStockAsync(order, ct).ConfigureAwait(false);
 
-        try
-        {
-            await eventBus.PublishAsync(new OrderCancelledMessage(
-                order.Id, command.Reason, "Customer",
-                order.CancelledAt ?? DateTimeOffset.UtcNow), ct)
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to publish OrderCancelledMessage for order {OrderId}", order.Id);
-        }
+        await orderRepository.UpdateAsync(order, ct).ConfigureAwait(false);
 
         return order.ToDto();
     }
@@ -54,7 +45,7 @@ public class CancelOrderHandler(
             Product? product = products.FirstOrDefault(p => p.ExternalId == item.ProductId);
             if (product is null)
             {
-                logger.LogWarning("Stock restore skipped: product {ProductId} not found for cancelled order {OrderId}",
+                logger.LogWarning("Refund stock restore: product {ProductId} not found for order {OrderId}",
                     item.ProductId, order.Id);
                 continue;
             }

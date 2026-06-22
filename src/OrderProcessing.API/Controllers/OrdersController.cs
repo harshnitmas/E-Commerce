@@ -4,6 +4,8 @@ using OrderProcessing.API.Models;
 using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Orders.Commands.CancelOrder;
 using OrderProcessing.Application.Orders.Commands.CreateOrder;
+using OrderProcessing.Application.Orders.Commands.ProcessRefund;
+using OrderProcessing.Application.Orders.Commands.RequestRefund;
 using OrderProcessing.Application.Orders.Commands.UpdateOrderStatus;
 using OrderProcessing.Application.Orders.Queries.GetOrderAudit;
 using OrderProcessing.Application.Orders.Queries.GetOrderById;
@@ -27,9 +29,10 @@ public class OrdersController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> CreateOrder(
         [FromBody] CreateOrderRequest request, CancellationToken ct)
     {
-        var command = new CreateOrderCommand(request.CustomerId, request.Items
-            .Select(i => new CreateOrderItemInput(i.ProductId, i.ProductName, i.Quantity, i.UnitPrice))
-            .ToList());
+        var command = new CreateOrderCommand(
+            request.CustomerId,
+            request.Items.Select(i => new CreateOrderItemInput(i.ProductId, i.ProductName, i.Quantity, i.UnitPrice)).ToList(),
+            request.ReservationIds);
 
         var result = await mediator.Send(command, ct);
         return result.Match<IActionResult>(
@@ -96,6 +99,34 @@ public class OrdersController(IMediator mediator) : ControllerBase
             error => ErrorResponse(error));
     }
 
+    /// <summary>Customer: request a refund for a delivered order.</summary>
+    [HttpPost("{id:guid}/refund/request")]
+    [ProducesResponseType(typeof(ApiResponse<OrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RequestRefund(
+        Guid id, [FromBody] RefundRequestBody body, CancellationToken ct)
+    {
+        var result = await mediator.Send(new RequestRefundCommand(id, body.CustomerId), ct);
+        return result.Match<IActionResult>(
+            order => Ok(ApiResponse<OrderDto>.Ok(order, CorrelationId)),
+            error => ErrorResponse(error));
+    }
+
+    /// <summary>Admin: approve or reject a refund request.</summary>
+    [HttpPost("{id:guid}/refund/process")]
+    [ProducesResponseType(typeof(ApiResponse<OrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ProcessRefund(
+        Guid id, [FromBody] ProcessRefundBody body, CancellationToken ct)
+    {
+        var result = await mediator.Send(new ProcessRefundCommand(id, body.Approve), ct);
+        return result.Match<IActionResult>(
+            order => Ok(ApiResponse<OrderDto>.Ok(order, CorrelationId)),
+            error => ErrorResponse(error));
+    }
+
     [HttpGet("{id:guid}/audit")]
     [ProducesResponseType(typeof(ApiResponse<List<AuditEventDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -123,7 +154,9 @@ public class OrdersController(IMediator mediator) : ControllerBase
     };
 }
 
-public record CreateOrderRequest(string CustomerId, List<CreateOrderItemRequest> Items);
+public record CreateOrderRequest(string CustomerId, List<CreateOrderItemRequest> Items, List<Guid>? ReservationIds = null);
 public record CreateOrderItemRequest(string ProductId, string ProductName, int Quantity, decimal UnitPrice);
 public record UpdateStatusRequest(string Status);
 public record CancelOrderRequest(string Reason);
+public record RefundRequestBody(string CustomerId);
+public record ProcessRefundBody(bool Approve);

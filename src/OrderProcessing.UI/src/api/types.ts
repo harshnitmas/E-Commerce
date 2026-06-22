@@ -1,4 +1,32 @@
-export type OrderStatus = 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'
+export type OrderStatus =
+  | 'Pending'
+  | 'Processing'
+  | 'Shipped'
+  | 'Delivered'
+  | 'Cancelled'
+  | 'RefundRequested'
+  | 'RefundApproved'
+  | 'RefundRejected'
+
+export type ProductDto = {
+  externalId: string
+  name: string
+  sku: string
+  price: number
+  category: string
+  imageUrl: string
+  stockQuantity: number
+  reservedQuantity: number
+  availableQuantity: number
+  inStock: boolean
+}
+
+export type ReservationDto = {
+  reservationId: string
+  externalProductId: string
+  quantity: number
+  expiresAt: string
+}
 
 export interface OrderItemDto {
   orderItemId: string
@@ -69,4 +97,5 @@ export interface CreateOrderRequest {
     quantity: number
     unitPrice: number
   }[]
+  reservationIds?: string[]
 }

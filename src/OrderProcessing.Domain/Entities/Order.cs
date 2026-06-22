@@ -68,12 +68,41 @@ public class Order : AggregateRoot<Guid>
         if (string.IsNullOrWhiteSpace(reason))
             return DomainErrors.Order.CancellationReasonRequired;
 
-        var previous = Status;
         Status = OrderStatus.Cancelled;
         CancelledAt = DateTimeOffset.UtcNow;
         UpdatedAt = DateTimeOffset.UtcNow;
         CancellationReason = reason.Trim();
 
+        return this;
+    }
+
+    public Result<Order, DomainError> RequestRefund()
+    {
+        if (Status != OrderStatus.Delivered)
+            return DomainErrors.Order.RefundOnlyForDelivered;
+
+        Status = OrderStatus.RefundRequested;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        return this;
+    }
+
+    public Result<Order, DomainError> ApproveRefund()
+    {
+        if (Status != OrderStatus.RefundRequested)
+            return DomainErrors.Order.RefundNotRequested;
+
+        Status = OrderStatus.RefundApproved;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        return this;
+    }
+
+    public Result<Order, DomainError> RejectRefund()
+    {
+        if (Status != OrderStatus.RefundRequested)
+            return DomainErrors.Order.RefundNotRequested;
+
+        Status = OrderStatus.RefundRejected;
+        UpdatedAt = DateTimeOffset.UtcNow;
         return this;
     }
 

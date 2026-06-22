@@ -8,12 +8,12 @@ export const authApi = {
     email: string
     password: string
   }): Promise<UserDto> => {
-    const res = await apiClient.post<UserDto>('/api/v1/auth/register', payload)
+    const res = await apiClient.post<UserDto>('/auth/register', payload)
     return res.data
   },
 
   login: async (payload: { username: string; password: string }): Promise<UserDto> => {
-    const res = await apiClient.post<UserDto>('/api/v1/auth/login', payload)
+    const res = await apiClient.post<UserDto>('/auth/login', payload)
     return res.data
   },
 }

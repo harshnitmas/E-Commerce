@@ -33,9 +33,12 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IOrderAuditRepository, OrderAuditRepository>();
         services.AddScoped<IOrderCacheService, OrderCacheService>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IInventoryReservationRepository, InventoryReservationRepository>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IEventBus, MassTransitEventBus>();
         services.AddHostedService<OrderProcessingJob>();
+        services.AddHostedService<ReservationExpiryJob>();
 
         return services;
     }

@@ -27,6 +27,12 @@ public static class DomainErrors
 
         public static readonly DomainError AlreadyCancelled =
             DomainError.BusinessRule("Order.AlreadyCancelled", "A cancelled order cannot be modified.");
+
+        public static readonly DomainError RefundOnlyForDelivered =
+            DomainError.BusinessRule("Order.RefundOnlyForDelivered", "Refunds can only be requested for delivered orders.");
+
+        public static readonly DomainError RefundNotRequested =
+            DomainError.BusinessRule("Order.RefundNotRequested", "Order does not have a pending refund request.");
     }
 
     public static class User
@@ -48,5 +54,21 @@ public static class DomainErrors
 
         public static readonly DomainError PriceMustBePositive =
             DomainError.Validation("OrderItem.PriceMustBePositive", "Unit price must be greater than 0.");
+    }
+
+    public static class Inventory
+    {
+        public static readonly DomainError QuantityMustBePositive =
+            DomainError.Validation("Inventory.QuantityMustBePositive", "Quantity must be at least 1.");
+
+        public static readonly DomainError ReservationNotFound =
+            DomainError.NotFound("Inventory.ReservationNotFound", "Reservation was not found or has already expired.");
+
+        public static readonly DomainError ProductNotFound =
+            DomainError.NotFound("Inventory.ProductNotFound", "Product was not found in inventory.");
+
+        public static DomainError InsufficientStock(string productName, int available) =>
+            DomainError.BusinessRule("Inventory.InsufficientStock",
+                $"'{productName}' has only {available} unit(s) available.");
     }
 }

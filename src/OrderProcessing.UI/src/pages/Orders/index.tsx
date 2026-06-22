@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ShoppingBag, Eye, XCircle, RefreshCw, Search } from 'lucide-react'
+import { ShoppingBag, Eye, XCircle, RefreshCw, Search, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useOrdersList, useCancelOrder } from '@/hooks/useOrders'
+import { useRequestRefund } from '@/hooks/useProducts'
 import { OrderStatusBadge } from '@/components/order/OrderStatusBadge'
 import { formatCurrency, formatDate, truncateId } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
@@ -20,8 +21,8 @@ const STATUS_TABS: { label: string; value: OrderStatus | '' }[] = [
 export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('')
   const [page, setPage] = useState(1)
-  const [cancelDialog, setCancelDialog] = useState<{ id: string; reason: string } | null>(null)
   const customerId = useAuthStore((s) => s.user?.customerId)
+  const [cancelDialog, setCancelDialog] = useState<{ id: string; reason: string } | null>(null)
 
   const { data, isLoading, refetch } = useOrdersList({
     status: statusFilter || undefined,
@@ -31,6 +32,8 @@ export default function OrdersPage() {
   })
 
   const cancelOrder = useCancelOrder()
+  const requestRefund = useRequestRefund()
+  const authUser = useAuthStore((s) => s.user)
 
   const handleCancel = async () => {
     if (!cancelDialog?.reason.trim()) { toast.error('Please enter a cancellation reason'); return }
@@ -40,6 +43,17 @@ export default function OrdersPage() {
       setCancelDialog(null)
     } catch {
       toast.error('Failed to cancel order')
+    }
+  }
+
+  const handleRequestRefund = async (orderId: string) => {
+    if (!authUser) return
+    if (!confirm('Request a refund for this order?')) return
+    try {
+      await requestRefund.mutateAsync({ orderId, customerId: authUser.customerId })
+      toast.success('Refund requested — admin will review shortly')
+    } catch {
+      toast.error('Failed to request refund')
     }
   }
 
@@ -124,6 +138,24 @@ export default function OrdersPage() {
                   >
                     <XCircle className="h-4 w-4" /> Cancel
                   </button>
+                )}
+                {order.status === 'Delivered' && (
+                  <button
+                    onClick={() => handleRequestRefund(order.orderId)}
+                    disabled={requestRefund.isPending}
+                    className="flex items-center gap-1.5 text-sm text-blue-500 hover:underline disabled:opacity-50"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Refund
+                  </button>
+                )}
+                {order.status === 'RefundRequested' && (
+                  <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full">Refund Pending</span>
+                )}
+                {order.status === 'RefundApproved' && (
+                  <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">Refunded</span>
+                )}
+                {order.status === 'RefundRejected' && (
+                  <span className="text-xs text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded-full">Refund Declined</span>
                 )}
               </div>
             </div>

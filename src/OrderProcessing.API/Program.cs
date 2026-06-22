@@ -6,6 +6,7 @@ using OrderProcessing.Domain.Entities;
 using OrderProcessing.Infrastructure.DependencyInjection;
 using OrderProcessing.Infrastructure.Persistence.PostgreSQL;
 using Serilog;
+using ILoggerFactory = Microsoft.Extensions.Logging.ILoggerFactory;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -64,6 +65,8 @@ try
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
         await SeedDefaultUsersAsync(scope.ServiceProvider);
+        ILoggerFactory logFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+        await ProductSeeder.SeedAsync(db, logFactory.CreateLogger("ProductSeeder"));
     }
 
     app.UseCors("AllowUI");

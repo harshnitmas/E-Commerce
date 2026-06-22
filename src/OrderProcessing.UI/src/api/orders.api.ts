@@ -5,12 +5,12 @@ import type {
 
 export const ordersApi = {
   create: async (payload: CreateOrderRequest): Promise<OrderDto> => {
-    const res = await apiClient.post<OrderDto>('/api/v1/orders', payload)
+    const res = await apiClient.post<OrderDto>('/orders', payload)
     return res.data
   },
 
   getById: async (id: string, customerId?: string): Promise<OrderDto> => {
-    const res = await apiClient.get<OrderDto>(`/api/v1/orders/${id}`, {
+    const res = await apiClient.get<OrderDto>(`/orders/${id}`, {
       params: customerId ? { customerId } : undefined,
     })
     return res.data
@@ -22,22 +22,22 @@ export const ordersApi = {
     page?: number
     pageSize?: number
   }): Promise<PagedResult<OrderDto>> => {
-    const res = await apiClient.get<PagedResult<OrderDto>>('/api/v1/orders', { params })
+    const res = await apiClient.get<PagedResult<OrderDto>>('/orders', { params })
     return res.data
   },
 
   updateStatus: async (id: string, status: OrderStatus): Promise<OrderDto> => {
-    const res = await apiClient.patch<OrderDto>(`/api/v1/orders/${id}/status`, { status })
+    const res = await apiClient.patch<OrderDto>(`/orders/${id}/status`, { status })
     return res.data
   },
 
   cancel: async (id: string, reason: string): Promise<OrderDto> => {
-    const res = await apiClient.post<OrderDto>(`/api/v1/orders/${id}/cancel`, { reason })
+    const res = await apiClient.post<OrderDto>(`/orders/${id}/cancel`, { reason })
     return res.data
   },
 
   getAudit: async (id: string): Promise<AuditEventDto[]> => {
-    const res = await apiClient.get<AuditEventDto[]>(`/api/v1/orders/${id}/audit`)
+    const res = await apiClient.get<AuditEventDto[]>(`/orders/${id}/audit`)
     return res.data
   },
 }

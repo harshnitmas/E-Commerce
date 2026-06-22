@@ -5,6 +5,7 @@ import { MOCK_PRODUCTS, CATEGORIES } from '@/mocks/products.mock'
 import { ProductCard } from '@/components/product/ProductCard'
 import { RecommendationSection } from '@/components/product/RecommendationSection'
 import { useRecommendations } from '@/hooks/useRecommendations'
+import { useProducts } from '@/hooks/useProducts'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import { formatCurrency } from '@/lib/utils'
@@ -16,9 +17,16 @@ const CATEGORY_ICONS: Record<string, string> = {
 }
 
 export default function HomePage() {
-  const deals = MOCK_PRODUCTS.filter((p) => p.badge === 'Deal').slice(0, 5)
-  const featured = MOCK_PRODUCTS.slice(0, 8)
-  const bestSellers = MOCK_PRODUCTS.filter((p) => p.badge === 'Best Seller')
+  const { data: liveStock } = useProducts()
+  const inStockIds = new Set(
+    (liveStock ?? []).filter((p) => p.inStock).map((p) => p.externalId)
+  )
+  // While liveStock is loading, show all mock products; once loaded, only show DB-confirmed in-stock items
+  const isAvailable = (id: string) => liveStock == null || inStockIds.has(id)
+
+  const deals = MOCK_PRODUCTS.filter((p) => p.badge === 'Deal' && isAvailable(p.id)).slice(0, 5)
+  const featured = MOCK_PRODUCTS.filter((p) => isAvailable(p.id)).slice(0, 8)
+  const bestSellers = MOCK_PRODUCTS.filter((p) => p.badge === 'Best Seller' && isAvailable(p.id))
   const { recentlyViewed, basedOnBrowsing, basedOnOrders, popularPicks } = useRecommendations()
   const user = useAuthStore((s) => s.user)
   const addItem = useCartStore((s) => s.addItem)
@@ -196,10 +204,11 @@ export default function HomePage() {
                 <div className="px-4 pb-4">
                   <button
                     onClick={() => { addItem(p); toast.success(`${p.name} added to cart!`) }}
-                    className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white font-semibold text-sm py-2.5 rounded-xl transition-colors duration-150"
+                    disabled={!isAvailable(p.id)}
+                    className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white font-semibold text-sm py-2.5 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                   >
                     <ShoppingCart className="h-4 w-4" />
-                    Add to Cart
+                    {isAvailable(p.id) ? 'Add to Cart' : 'Out of Stock'}
                   </button>
                 </div>
               </motion.div>

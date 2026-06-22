@@ -24,6 +24,21 @@ export const ORDER_STATUS_CONFIG = {
     color: 'bg-gray-100 text-gray-600',
     dotColor: 'bg-gray-400',
   },
+  RefundRequested: {
+    label: 'Refund Pending',
+    color: 'bg-orange-100 text-orange-800',
+    dotColor: 'bg-orange-500',
+  },
+  RefundApproved: {
+    label: 'Refunded',
+    color: 'bg-teal-100 text-teal-800',
+    dotColor: 'bg-teal-500',
+  },
+  RefundRejected: {
+    label: 'Refund Declined',
+    color: 'bg-red-100 text-red-700',
+    dotColor: 'bg-red-500',
+  },
 } as const
 
 export const STATUS_STEPS = ['Pending', 'Processing', 'Shipped', 'Delivered'] as const
